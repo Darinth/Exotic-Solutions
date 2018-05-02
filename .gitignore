@@ -1,0 +1,5 @@
+Plugin/.vs/
+*.user
+Plugin/ExoticSolutions/bin/
+Plugin/ExoticSolutions/obj/
+*.zip
