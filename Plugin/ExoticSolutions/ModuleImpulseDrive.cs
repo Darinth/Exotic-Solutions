@@ -59,6 +59,12 @@ namespace ExoticSolutions
 {
     class ModuleImpulseDrive : ModuleEnginesFX
     {
+        [KSPEvent(active = true, guiActive = true, guiActiveEditor = false, guiActiveUncommand = true, guiName = "Log G-Force", name = "LogGeeForce", requireFullControl = false)]
+        public void LogGeeForce()
+        {
+            KSPLog.print("G-Force: " + vessel.geeForce + ", " + vessel.geeForce_immediate);
+        }
+
         //Thrust/ISP/this number provides you the with the fuel flow needed to achieve the selected thrust.
         private double ThrustIspToFuelFlowConstant;
         //Max fuel flow of base engine.
@@ -176,8 +182,8 @@ namespace ExoticSolutions
         {
             KSPLog.print("EEUpdate from OnStart");
             updateEE();
-            SelectedThrust = BaseMaxThrust;
-            SelectedISP = BaseAtmosphereCurve.Evaluate(0);
+            //SelectedThrust = BaseMaxThrust;
+            //SelectedISP = BaseAtmosphereCurve.Evaluate(0);
             resetEngineParams();
             base.OnStart(state);
         }

@@ -46,8 +46,9 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Constants.cs" />
-    <Compile Include="ImpulseDrive.cs" />
+    <Compile Include="ModuleImpulseDrive.cs" />
     <Compile Include="ModuleExoticsCore.cs" />
+    <Compile Include="ModuleOrbitalResourceConverter.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
