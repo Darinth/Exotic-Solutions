@@ -3,3 +3,4 @@ Plugin/.vs/
 Plugin/ExoticSolutions/bin/
 Plugin/ExoticSolutions/obj/
 *.zip
+*.dll
