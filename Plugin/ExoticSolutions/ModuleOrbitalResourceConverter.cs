@@ -8,9 +8,14 @@ namespace ExoticSolutions
 {
     class ModuleOrbitalResourceConverter : ModuleResourceConverter
     {
-        public override bool IsSituationValid()
+        public override void FixedUpdate()
         {
-            return vessel.geeForce < 0.01;
+            if(vessel && vessel.situation != Vessel.Situations.ORBITING && IsActivated)
+            {
+                KSPLog.print("Shutting down Orbital Converter. Not in orbit.");
+                StopResourceConverter();
+            }
+            base.FixedUpdate();
         }
     }
 }
