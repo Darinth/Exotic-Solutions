@@ -46,6 +46,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Constants.cs" />
+    <Compile Include="ModuleGraviticDrive.cs" />
     <Compile Include="ModuleImpulseDrive.cs" />
     <Compile Include="ModuleExoticsCore.cs" />
     <Compile Include="ModuleOrbitalResourceConverter.cs" />

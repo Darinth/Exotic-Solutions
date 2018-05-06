@@ -116,10 +116,6 @@ namespace ExoticSolutions
         [KSPEvent(active = true, guiActive = true, guiActiveEditor = false, guiActiveUncommand = false, guiName = "Activate Exotic Excitation Field", name = "ExcitationFieldToggle", requireFullControl = true)]
         public void ExcitationFieldToggle()
         {
-            foreach (BaseEvent kspevent in Events)
-            {
-                KSPLog.print(kspevent.name);
-            }
             if (EETime <= 0)
             {
 
@@ -208,7 +204,6 @@ namespace ExoticSolutions
             KSPLog.print("Update EERequired to " + EERequired);
         }
 
-        [KSPAction(guiName = "Activate Excitation Field", requireFullControl = true)]
         public void InitializeExoticExcitationField()
         {
 
@@ -227,7 +222,6 @@ namespace ExoticSolutions
             }
         }
 
-        [KSPAction(guiName = "Deactivate Excitation Field", requireFullControl = true)]
         public void ShutdownExoticExcitationField()
         {
             Events["ExcitationFieldToggle"].guiName = "Activate Exotic Excitation Field";
