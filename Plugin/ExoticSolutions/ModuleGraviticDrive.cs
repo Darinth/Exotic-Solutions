@@ -135,10 +135,13 @@ namespace ExoticSolutions
         {
             if (EETime > 0f)
             {
-                double ECRequest = ECPerLiftTonnage * SelectedLiftTonnage * TimeWarp.fixedDeltaTime;
-                double returnedEC = this.part.RequestResource(Constants.ECDefinition.id, ECRequest);
-                Vector3 acceleration = vessel.graviticAcceleration * vessel.gravityMultiplier / part.mass * TimeWarp.fixedDeltaTime * SelectedLiftTonnage * -1 * (returnedEC/ECRequest);
-                part.Rigidbody.AddForce(acceleration, ForceMode.VelocityChange);
+                if (SelectedLiftTonnage != 0)
+                {
+                    double ECRequest = ECPerLiftTonnage * Math.Abs(SelectedLiftTonnage) * TimeWarp.fixedDeltaTime;
+                    double returnedEC = this.part.RequestResource(Constants.ECDefinition.id, ECRequest);
+                    Vector3 acceleration = vessel.graviticAcceleration * vessel.gravityMultiplier / part.mass * TimeWarp.fixedDeltaTime * SelectedLiftTonnage * -1 * (returnedEC / ECRequest);
+                    part.Rigidbody.AddForce(acceleration, ForceMode.VelocityChange);
+                }
                 EETime -= TimeWarp.fixedDeltaTime;
                 if (EETime < 0f)
                 {
