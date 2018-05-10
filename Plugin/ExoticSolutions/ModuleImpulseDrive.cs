@@ -170,13 +170,11 @@ namespace ExoticSolutions
 
             ThrustIspToFuelFlowConstant = maxThrust / maxFuelFlow / BaseAtmosphereCurve.Evaluate(0);
 
-            KSPLog.print("EEUpdate from OnAwake");
             updateEE();
         }
 
         public override void OnStart(StartState state)
         {
-            KSPLog.print("EEUpdate from OnStart");
             updateEE();
             //SelectedThrust = BaseMaxThrust;
             //SelectedISP = BaseAtmosphereCurve.Evaluate(0);

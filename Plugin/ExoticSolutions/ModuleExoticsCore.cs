@@ -9,112 +9,83 @@ namespace ExoticSolutions
     class ModuleExoticsCore : PartModule
     {
         [KSPField]
-        public double ElectricUsage = 100f;
+        public double EMtoECRatio = 1000f;
 
         [KSPField]
-        public double EEGeneration = 0.2f;
-
-        [KSPField]
-        public double EELossPercent = 0.08f;
-
-        [KSPField]
-        public double EELossFlat = 0.02f;
-
-        [KSPField]
-        public double CoreStrengthExponentMultiplier = 1d;
-
-        [KSPField(guiActive = true, guiActiveEditor = false, guiName = "Core Strength:", guiFormat = "P2"), UI_Label()]
-        public double CoreStrength = 1f;
-
-        [KSPField(isPersistant = true, guiActive = true, guiName = "Active:", guiActiveEditor = false), UI_Toggle(disabledText = "No", enabledText = "Yes")]
-        public bool active = false;
+        public double EEGeneration = 1d / 3600d;
 
         PartResource exoticEnergy;
 
-        double activeTime = 0f;
+        double saveTime;
 
-        [KSPAction(guiName = "Toggle EE Generator", requireFullControl = true)]
-        public void ActionToggleEEGenerator(KSPActionParam actionParams)
+        public double generateEE(double amount)
         {
-            active = !active;
+            if (vessel)
+            {
+                double EMAvailable;
+                double EMMax;
+                part.GetConnectedResourceTotals(Constants.EMDefinition.id, out EMAvailable, out EMMax, true);
+
+                if (EMAvailable < amount)
+                    amount = EMAvailable;
+                exoticEnergy.amount += amount;
+                part.RequestResource(Constants.EMDefinition.id, amount);
+                part.RequestResource(Constants.ECDefinition.id, -amount * EMtoECRatio);
+                return amount;
+            }
+            return 0d;
         }
 
-        [KSPAction(guiName = "Activate EE Generator", requireFullControl = true)]
-        public void ActionActivateEEGenerator(KSPActionParam actionParams)
+        public override void OnInitialize()
         {
-            active = true;
+            KSPLog.print("Core: OnInitialize");
+            base.OnInitialize();
         }
 
-        [KSPAction(guiName = "Deactivate EE Generator", requireFullControl = true)]
-        public void ActionDeactivateEEGenerator(KSPActionParam actionParams)
+        public override void OnLoad(ConfigNode node)
         {
-            active = false;
+            base.OnLoad(node);
+            KSPLog.print("Core: OnLoad");
+            if(!node.TryGetValue("SaveTime", ref saveTime))
+                saveTime = 0d;
+        }
+
+        public override void OnStart(StartState state)
+        {
+            base.OnStart(state);
+            KSPLog.print("Core: OnStart(" + state.ToString() + ")");
+            if (vessel)
+            {
+                KSPLog.print(vessel.situation.ToString());
+                KSPLog.print(exoticEnergy.amount.ToString() + "/" + exoticEnergy.maxAmount.ToString());
+                //Perform prelaunch conversion
+                if ((vessel.situation & Vessel.Situations.PRELAUNCH) == Vessel.Situations.PRELAUNCH)
+                    generateEE(exoticEnergy.maxAmount - exoticEnergy.amount);
+                else
+                    generateEE(EEGeneration * (Planetarium.GetUniversalTime() - saveTime));
+            }
         }
 
         public override void OnAwake()
         {
             base.OnAwake();
+            KSPLog.print("Core: OnAwake");
+            exoticEnergy = this.part.Resources[Constants.EEDefinition.name];
         }
 
-        public override void OnLoad(ConfigNode node)
+        public override void OnSave(ConfigNode node)
         {
-            exoticEnergy = this.part.Resources[Constants.EEDefinition.name];
+            base.OnSave(node);
+            KSPLog.print("Core: OnSave");
+            node.AddValue("SaveTime", Planetarium.GetUniversalTime());
         }
 
         public void FixedUpdate()
         {
-            if(part.CrewCapacity > 0)
+            if (vessel)
             {
-
+                generateEE(EEGeneration * TimeWarp.fixedDeltaTime);
             }
-
-            if(active)
-            {
-                activeTime += TimeWarp.fixedDeltaTime;
-                CoreStrength = Math.Pow(0.995, activeTime * CoreStrengthExponentMultiplier);
-                if (CoreStrength < 0.1)
-                {
-                    active = false;
-                }
-            }
-            else
-            {
-                activeTime -= TimeWarp.fixedDeltaTime;
-                if (activeTime < 0f) activeTime = 0f;
-                CoreStrength = Math.Pow(0.995, activeTime * CoreStrengthExponentMultiplier);
-            }
-
-            double EEChange;
-            EEChange = -((exoticEnergy.amount * EELossPercent + EELossFlat) * TimeWarp.fixedDeltaTime);
-            if (active)
-            {
-                double ECRequest = ElectricUsage * TimeWarp.fixedDeltaTime;
-                double returnedEC = this.part.RequestResource(Constants.ECDefinition.id, ECRequest);
-                EEChange += (EEGeneration * (returnedEC / ElectricUsage) * CoreStrength);
-            }
-            double EEAvailable;
-            double EEMax;
-            part.GetConnectedResourceTotals(Constants.EEDefinition.id, out EEAvailable, out EEMax, true);
-            if (EEChange > 0)
-            {
-                double EMAvailable;
-                double EMMax;
-                part.GetConnectedResourceTotals(Constants.EMDefinition.id, out EMAvailable, out EMMax, true);
-                double EESpace = EEMax - EEAvailable; ;
-                if (EMAvailable < EEChange)
-                    EEChange = EMAvailable;
-                if (EESpace < EEChange)
-                    EEChange = EESpace;
-                part.RequestResource(Constants.EMDefinition.id, EEChange);
-            }
-            else
-            {
-                if (EEAvailable < -EEChange)
-                    EEChange = -EEAvailable;
-            }
-            exoticEnergy.amount += EEChange;
-            //if (exoticEnergy.amount / exoticEnergy.maxAmount > 0.999)
-            //    exoticEnergy.amount = exoticEnergy.maxAmount;
         }
     }
 }

@@ -79,13 +79,11 @@ namespace ExoticSolutions
 
             base.OnAwake();
 
-            KSPLog.print("EEUpdate from OnAwake");
             updateEE();
         }
 
         public override void OnStart(StartState state)
         {
-            KSPLog.print("EEUpdate from OnStart");
             updateEE();
             base.OnStart(state);
         }
