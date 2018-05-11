@@ -40,5 +40,7 @@ namespace ExoticSolutions
                 return pECDefinition;
             }
         }
+
+        public static ExoticSolutionsScenario exoticSolutionScenario;
     }
 }
