@@ -42,14 +42,27 @@ namespace ExoticSolutions
             KSPLog.print("ES: ShipRolloutEvent");
             foreach(Part part in construct.parts)
             {
-                if(part.Modules.Contains<ModuleExoticMaterialsResourceTweaker>())
+                if (part.Resources.Contains(Constants.EEDefinition.name))
                 {
-                    ModuleExoticMaterialsResourceTweaker tweaker = part.Modules.GetModule<ModuleExoticMaterialsResourceTweaker>();
-                    if (tweaker.TweakedEM > storedExoticMatter)
-                        tweaker.TweakedEM = (float)storedExoticMatter;
-                    part.Resources[Constants.EMDefinition.name].amount = tweaker.TweakedEM;
-                    storedExoticMatter -= tweaker.TweakedEM;
-                    KSPLog.print("Spent " + tweaker.TweakedEM + " EM");
+                    PartResource exoticEnergies = part.Resources[Constants.EEDefinition.name];
+                    if (HighLogic.CurrentGame.Mode == Game.Modes.CAREER)
+                    {
+                        if (exoticEnergies.amount > storedExoticMatter)
+                            exoticEnergies.amount = (float)storedExoticMatter;
+                        storedExoticMatter -= exoticEnergies.amount;
+                    }
+                    KSPLog.print("Spent " + exoticEnergies.amount + " EM");
+                }
+                if (part.Resources.Contains(Constants.EMDefinition.name))
+                {
+                    PartResource exoticMaterials = part.Resources[Constants.EMDefinition.name];
+                    if (HighLogic.CurrentGame.Mode == Game.Modes.CAREER)
+                    {
+                        if (exoticMaterials.amount > storedExoticMatter)
+                            exoticMaterials.amount = (float)storedExoticMatter;
+                        storedExoticMatter -= exoticMaterials.amount;
+                    }
+                    KSPLog.print("Spent " + exoticMaterials.amount + " EM");
                 }
             }
             KSPLog.print("Stored EM: " + storedExoticMatter);

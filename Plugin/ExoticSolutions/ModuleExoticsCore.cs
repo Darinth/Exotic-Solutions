@@ -16,8 +16,7 @@ namespace ExoticSolutions
 
         PartResource exoticEnergy;
 
-        [KSPField(isPersistant = true)]
-        double saveTime;
+        double saveTime = 0;
 
         public double generateEE(double amount)
         {
@@ -26,10 +25,10 @@ namespace ExoticSolutions
                 double EMAvailable;
                 double EMMax;
                 part.GetConnectedResourceTotals(Constants.EMDefinition.id, out EMAvailable, out EMMax, true);
-                KSPLog.print("GenerateEE");
+                /*KSPLog.print("GenerateEE");
                 KSPLog.print("EMAvailable: " + EMAvailable);
                 KSPLog.print("EMMax: " + EMMax);
-                KSPLog.print("amount: " + amount);
+                KSPLog.print("amount: " + amount);*/
 
                 if (EMAvailable < amount)
                     amount = EMAvailable;
@@ -56,11 +55,14 @@ namespace ExoticSolutions
                 {
                     KSPLog.print(exoticEnergy.amount.ToString() + "/" + exoticEnergy.maxAmount.ToString());
                     //Perform prelaunch conversion
-                    if ((vessel.situation & Vessel.Situations.PRELAUNCH) == Vessel.Situations.PRELAUNCH)
-                        generateEE(exoticEnergy.maxAmount - exoticEnergy.amount);
-                    else
-                        generateEE(EEGeneration * (Planetarium.GetUniversalTime() - saveTime));
+                    //if ((vessel.situation & Vessel.Situations.PRELAUNCH) == Vessel.Situations.PRELAUNCH)
+                        //generateEE(exoticEnergy.maxAmount - exoticEnergy.amount);
                 }
+                KSPLog.print(Planetarium.GetUniversalTime());
+                KSPLog.print(saveTime);
+                KSPLog.print(Planetarium.GetUniversalTime() - saveTime);
+                if (saveTime != 0)
+                    generateEE(EEGeneration * (Planetarium.GetUniversalTime() - saveTime));
             }
         }
 
@@ -68,6 +70,7 @@ namespace ExoticSolutions
         {
             base.OnLoad(node);
             KSPLog.print("Core: OnLoad");
+            node.TryGetValue("SaveTime", ref saveTime);
         }
 
         public override void OnStart(StartState state)
@@ -78,7 +81,6 @@ namespace ExoticSolutions
 
         public override void OnAwake()
         {
-            saveTime = Planetarium.GetUniversalTime();
             base.OnAwake();
             KSPLog.print("Core: OnAwake");
             exoticEnergy = this.part.Resources[Constants.EEDefinition.name];
@@ -86,13 +88,14 @@ namespace ExoticSolutions
 
         public override void OnSave(ConfigNode node)
         {
-            saveTime = Planetarium.GetUniversalTime();
             base.OnSave(node);
             KSPLog.print("Core: OnSave");
+            node.AddValue("SaveTime", Planetarium.GetUniversalTime());
         }
 
         public void FixedUpdate()
         {
+            //KSPLog.print("Core: FixedUpdate");
             if (vessel)
             {
                 generateEE(EEGeneration * TimeWarp.fixedDeltaTime);
