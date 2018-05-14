@@ -66,6 +66,12 @@ namespace ExoticSolutions
             }
         }
 
+        public override void OnCopy(PartModule fromModule)
+        {
+            base.OnCopy(fromModule);
+            KSPLog.print("Core: OnCopy");
+        }
+
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
