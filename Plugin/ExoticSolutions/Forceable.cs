@@ -136,17 +136,33 @@ namespace ExoticSolutions
 
         public Vector3 getSrfVelocity()
         {
-            if(forceableType == ForceableType.part)
+            if (forceableType == ForceableType.part)
             {
                 return ((Part)forceTarget).vessel.srf_velocity;
             }
-            else if(forceableType == ForceableType.vessel)
+            else if (forceableType == ForceableType.vessel)
             {
                 return ((Vessel)forceTarget).srf_velocity;
             }
             else
             {
-                return new Vector3(0,0,0);
+                return new Vector3(0, 0, 0);
+            }
+        }
+
+        public Vector3 getObtVelocity()
+        {
+            if (forceableType == ForceableType.part)
+            {
+                return ((Part)forceTarget).vessel.obt_velocity;
+            }
+            else if (forceableType == ForceableType.vessel)
+            {
+                return ((Vessel)forceTarget).obt_velocity;
+            }
+            else
+            {
+                return new Vector3(0, 0, 0);
             }
         }
 

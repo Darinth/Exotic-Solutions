@@ -506,7 +506,7 @@ namespace ExoticSolutions
                                 force = force.normalized * (float)maxThrust;
                             force *= TimeWarp.fixedDeltaTime;
 
-                            double EEThrustCost = (force.magnitude/maxThrust) * maxThrustEE;
+                            double EEThrustCost = (force.magnitude / maxThrust) * maxThrustEE;
                             double throttleLimit;
 
                             if (remainingEEUpdate < EEThrustCost)
@@ -525,6 +525,76 @@ namespace ExoticSolutions
                             part.RequestResource(Constants.EEDefinition.id, EEDistanceCost + EEThrustCost * throttleLimit);
 
                             transferInertia(sourceForceable, sinkForceable, force);
+                        }
+                        else if (shuntMode == ShuntMode.KillOrbitalVelocity)
+                        {
+                            Vector3 force = (sourceForceable.getObtVelocity() + sourceForceable.getGraviticAcceleration() + sourceForceable.getCentrifugalAcceleration()) * (float)sourceForceable.getVesselMass() * -1;
+                            if (force.magnitude > maxThrust)
+                                force = force.normalized * (float)maxThrust;
+                            force *= TimeWarp.fixedDeltaTime;
+
+                            double EEThrustCost = (force.magnitude / maxThrust) * maxThrustEE;
+                            double throttleLimit;
+
+                            if (remainingEEUpdate < EEThrustCost)
+                            {
+                                throttleLimit = remainingEEUpdate / EEThrustCost;
+                                thrustStatus = "Power Limited " + throttleLimit.ToString("P2");
+                            }
+                            else
+                            {
+                                throttleLimit = 1;
+                                thrustStatus = "Full power";
+                            }
+                            force *= (float)throttleLimit;
+
+                            remainingEEUpdate -= EEThrustCost * throttleLimit;
+                            part.RequestResource(Constants.EEDefinition.id, EEDistanceCost + EEThrustCost * throttleLimit);
+
+                            transferInertia(sourceForceable, sinkForceable, force);
+                        }
+                        else if (shuntMode == ShuntMode.KillRelativeVelocity)
+                        {
+                            if (sourceTarget == ShuntTarget.Self)
+                            {
+                                thrustStatus = "Invalid source";
+                            }
+                            else
+                            {
+                                Vector3 force;
+                                if (sinkTarget != ShuntTarget.Self)
+                                {
+                                    force = (sourceForceable.getObtVelocity() - vessel.GetObtVelocity()) * (float)sourceForceable.getVesselMass() * -1;
+                                }
+                                else
+                                {
+                                    force = (sourceForceable.getObtVelocity() - vessel.GetObtVelocity()) * ((float)sourceForceable.getVesselMass() + vessel.GetTotalMass()) / 2 * -1;
+                                }
+
+                                if (force.magnitude > maxThrust)
+                                    force = force.normalized * (float)maxThrust;
+                                force *= TimeWarp.fixedDeltaTime;
+
+                                double EEThrustCost = (force.magnitude / maxThrust) * maxThrustEE;
+                                double throttleLimit;
+
+                                if (remainingEEUpdate < EEThrustCost)
+                                {
+                                    throttleLimit = remainingEEUpdate / EEThrustCost;
+                                    thrustStatus = "Power Limited " + throttleLimit.ToString("P2");
+                                }
+                                else
+                                {
+                                    throttleLimit = 1;
+                                    thrustStatus = "Full power";
+                                }
+                                force *= (float)throttleLimit;
+
+                                remainingEEUpdate -= EEThrustCost * throttleLimit;
+                                part.RequestResource(Constants.EEDefinition.id, EEDistanceCost + EEThrustCost * throttleLimit);
+
+                                transferInertia(sourceForceable, sinkForceable, force);
+                            }
                         }
                         else
                         {
