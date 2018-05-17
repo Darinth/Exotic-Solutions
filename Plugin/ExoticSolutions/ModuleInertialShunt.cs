@@ -16,8 +16,7 @@ namespace ExoticSolutions
             ManualControl = 1,
             KillSurfaceVelocity = 2,
             KillOrbitalVelocity = 3,
-            KillRelativeVelocity = 4,
-            SetTargetDistance = 5
+            KillRelativeVelocity = 4
         }
 
         public enum ShuntTarget
@@ -27,6 +26,9 @@ namespace ExoticSolutions
             CraftTarget = 2,
             NearestVessel = 3
         }
+
+        [KSPField(isPersistant = true)]
+        public bool active = false;
 
         [KSPField(guiActive = true, guiActiveEditor = false, guiName = "Thrust"), UI_Label()]
         public string thrustStatus = "";
@@ -57,7 +59,7 @@ namespace ExoticSolutions
         public ShuntMode shuntMode = ShuntMode.ManualControl;
 
         [KSPField(isPersistant = true, guiActive = true, guiActiveEditor = true, guiName = "Source", advancedTweakable = true), UI_ChooseOption(display = new string[] { "Self", "Celestial Body", "Craft Target", "Nearest Vessel" }, options = new string[] { "Self", "CelestialBody", "CraftTarget", "NearestVessel" })]
-        public string sourceTargetString = "CelestialBody";
+        public string sourceTargetString = "Self";
         public ShuntTarget sourceTarget = ShuntTarget.Self;
 
         [KSPField(isPersistant = true, guiActive = true, guiActiveEditor = true, guiName = "Sink", advancedTweakable = true), UI_ChooseOption(display = new string[] { "Self", "Celestial Body", "Craft Target", "Nearest Vessel" }, options = new string[] { "Self", "CelestialBody", "CraftTarget", "NearestVessel" })]
@@ -75,6 +77,49 @@ namespace ExoticSolutions
 
         public bool sinkValid;
         public Forceable sinkForceable = new Forceable();
+
+        [KSPEvent(active = true, guiActive = true, guiActiveEditor = false, guiActiveUncommand = false, guiName = "Activate Kinetic Shunt", name = "ShuntToggle", requireFullControl = true)]
+        public void ShuntToggle()
+        {
+            if (active)
+            {
+                DeactivateShunt();
+            }
+            else
+            {
+                ActivateShunt();
+            }
+        }
+
+        public void ActivateShunt()
+        {
+            active = true;
+            Events["ShuntToggle"].guiName = "Deactivate Kinetic Shunt";
+        }
+
+        public void DeactivateShunt()
+        {
+            active = false;
+            Events["ShuntToggle"].guiName = "Activate Kinetic Shunt";
+        }
+
+        [KSPAction(guiName = "Toggle Kinetic Shunt", requireFullControl = true)]
+        public void ActionToggleExcitationField(KSPActionParam actionParams)
+        {
+            ShuntToggle();
+        }
+
+        [KSPAction(guiName = "Activate Kinetic Shunt", requireFullControl = true)]
+        public void ActionActivateExcitationField(KSPActionParam actionParams)
+        {
+            ActivateShunt();
+        }
+
+        [KSPAction(guiName = "Deactivate Kinetic Shunt", requireFullControl = true)]
+        public void ActionDeactivateExcitationField(KSPActionParam actionParams)
+        {
+            DeactivateShunt();
+        }
 
         public override void OnAwake()
         {
@@ -455,7 +500,7 @@ namespace ExoticSolutions
                     thrustStatus = "Source & Sink Same";
                     torqueStatus = "Source & Sink Same";
                 }
-                else
+                else if(active)
                 {
                     double EEAvailable;
                     double EEMax;
@@ -627,6 +672,11 @@ namespace ExoticSolutions
                         part.Rigidbody.AddTorque(transform.right * (float)maxTorque * -vessel.ctrlState.pitch * (float)throttleLimit * TimeWarp.fixedDeltaTime, ForceMode.Impulse);
                         part.Rigidbody.AddTorque(transform.up * (float)maxTorque * -vessel.ctrlState.roll * (float)throttleLimit * TimeWarp.fixedDeltaTime, ForceMode.Impulse);
                     }
+                }
+                else
+                {
+                    thrustStatus = "Inactive";
+                    torqueStatus = "Inactive";
                 }
             }
         }
