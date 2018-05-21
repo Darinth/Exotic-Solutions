@@ -153,10 +153,10 @@ namespace ExoticSolutions
             sourceForceable.setRanges((float)minForceloadRange);
             sinkForceable.setRanges((float)minForceloadRange);
             if(active) Events["ShuntToggle"].guiName = "Deactivate Kinetic Shunt";
-            if (!allowSourceChange) Fields["sourceTargetString"].uiControlEditor = null;
-            if (!allowSourceChange) Fields["sourceTargetString"].uiControlFlight = null;
-            if (!allowSinkChange) Fields["sinkTargetString"].uiControlEditor = null;
-            if (!allowSinkChange) Fields["sinkTargetString"].uiControlFlight = null;
+            Fields["sourceTargetString"].guiActive = allowSourceChange;
+            Fields["sourceTargetString"].guiActiveEditor = allowSourceChange;
+            Fields["sinkTargetString"].guiActive = allowSinkChange;
+            Fields["sinkTargetString"].guiActiveEditor = allowSinkChange;
         }
 
         public override void OnActive()
