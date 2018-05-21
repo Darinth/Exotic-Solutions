@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace ExoticSolutions
 {
-    class ModuleInertialShunt : PartModule
+    class ModuleKineticShunt : PartModule
     {
         private char[] aSpace = new char[] { ' ' };
 
@@ -364,154 +364,17 @@ namespace ExoticSolutions
             }
         }
 
-        public void transferInertia(Forceable source, Forceable sink, Vector3 force)
+        public void transferKineticEnergy(Forceable source, Forceable sink, Vector3 force)
         {
             source.addForce(force, ForceMode.Impulse);
             sink.addForce(-force, ForceMode.Impulse);
         }
-
-        /*public void transferInertia(ShuntTarget sourceTarget, ShuntTarget sinkTarget, Vector3 force)
-        {
-            if (sourceTarget == ShuntTarget.Self)
-            {
-                part.Rigidbody.AddForce(force, ForceMode.Impulse);
-            }
-            else if (sourceTarget == ShuntTarget.CelestialBody)
-            {
-
-            }
-            else if (sourceTarget == ShuntTarget.CraftTarget && typeof(Vessel).IsInstanceOfType(vessel.targetObject))
-            {
-                ((Vessel)vessel.targetObject).addForce(force, ForceMode.Impulse);
-            }
-            else if (sourceTarget == ShuntTarget.NearestVessel)
-            {
-                List<Vessel> sortedLoadedVessels = FlightGlobals.FindNearestVesselWhere(part.transform.position, vessel => vessel.loaded);
-                Vessel thrustVessel;
-                if (sinkTarget == ShuntTarget.CraftTarget)
-                {
-                    if (sortedLoadedVessels.Count < 3)
-                    {
-                        return;
-                    }
-                    else
-                    {
-                        if (sortedLoadedVessels[1] != (Vessel)vessel.targetObject)
-                        {
-                            thrustVessel = sortedLoadedVessels[1];
-                        }
-                        else
-                        {
-                            thrustVessel = sortedLoadedVessels[2];
-                        }
-                    }
-                }
-                if (sortedLoadedVessels.Count < 2)
-                {
-                    return;
-                }
-                else
-                {
-                    thrustVessel = sortedLoadedVessels[1];
-                }
-                thrustVessel.addForce(force);
-            }
-
-            if (sinkTarget == ShuntTarget.Self)
-            {
-                part.Rigidbody.AddForce(-force, ForceMode.Impulse);
-            }
-            else if (sinkTarget == ShuntTarget.CelestialBody)
-            {
-
-            }
-            else if (sinkTarget == ShuntTarget.CraftTarget && typeof(Vessel).IsInstanceOfType(vessel.targetObject))
-            {
-                ((Vessel)vessel.targetObject).addForce(-force);
-            }
-            else if (sinkTarget == ShuntTarget.NearestVessel)
-            {
-                List<Vessel> sortedLoadedVessels = FlightGlobals.FindNearestVesselWhere(part.transform.position, vessel => vessel.loaded);
-                Vessel thrustVessel;
-                if (sourceTarget == ShuntTarget.CraftTarget)
-                {
-                    if (sortedLoadedVessels.Count < 3)
-                    {
-                        return;
-                    }
-                    else
-                    {
-                        if (sortedLoadedVessels[1] != (Vessel)vessel.targetObject)
-                        {
-                            thrustVessel = sortedLoadedVessels[1];
-                        }
-                        else
-                        {
-                            thrustVessel = sortedLoadedVessels[2];
-                        }
-                    }
-                }
-                if (sortedLoadedVessels.Count < 2)
-                {
-                    return;
-                }
-                else
-                {
-                    thrustVessel = sortedLoadedVessels[1];
-                }
-                thrustVessel.addForce(-force);
-            }
-        }*/
 
         public void FixedUpdate()
         {
             if (HighLogic.LoadedSceneIsFlight)
             {
                 updateForceables();
-
-                //Get source and source distance
-                /*if (sinkTarget == ShuntTarget.Self)
-                {
-                    source = null;
-                    sourceDistance = 0f;
-                }
-                if (sinkTarget == ShuntTarget.CelestialBody)
-                {
-                    source = null;
-                    sourceDistance = (float)vessel.radarAltitude;
-                }
-                else if (sinkTarget == ShuntTarget.CraftTarget && typeof(Vessel).IsInstanceOfType(vessel.targetObject))
-                {
-                    source = (Vessel)vessel.targetObject;
-                    sourceDistance = (source.transform.position - part.transform.position).magnitude;
-                }
-                else
-                {
-                    source = FlightGlobals.FindNearestVesselWhere(part.transform.position, vessel => vessel.loaded)[1];
-                    sourceDistance = (source.transform.position - part.transform.position).magnitude;
-                }
-
-                //Get sink and sink distance
-                if (sinkTarget == ShuntTarget.Self)
-                {
-                    sink = null;
-                    sinkDistance = 0f;
-                }
-                if (sinkTarget == ShuntTarget.CelestialBody)
-                {
-                    sink = null;
-                    sinkDistance = (float)vessel.radarAltitude;
-                }
-                else if (sinkTarget == ShuntTarget.CraftTarget && typeof(Vessel).IsInstanceOfType(vessel.targetObject))
-                {
-                    sink = (Vessel)vessel.targetObject;
-                    sinkDistance = (source.transform.position - part.transform.position).magnitude;
-                }
-                else
-                {
-                    sink = FlightGlobals.FindNearestVesselWhere(part.transform.position, vessel => vessel.loaded)[1];
-                    sinkDistance = (source.transform.position - part.transform.position).magnitude;
-                }*/
 
                 //Test to make sure we have a valid sink
                 if (!sinkValid)
@@ -575,7 +438,7 @@ namespace ExoticSolutions
                             Vector3 force = transform.up * (float)maxThrust * vessel.ctrlState.mainThrottle * (float)throttleLimit;
                             force *= TimeWarp.fixedDeltaTime;
 
-                            transferInertia(sourceForceable, sinkForceable, force);
+                            transferKineticEnergy(sourceForceable, sinkForceable, force);
                         }
                         else if (shuntMode == ShuntMode.KillSurfaceVelocity)
                         {
@@ -602,7 +465,7 @@ namespace ExoticSolutions
                             remainingEEUpdate -= EEThrustCost * throttleLimit;
                             part.RequestResource(Constants.EEDefinition.id, EEDistanceCost + EEThrustCost * throttleLimit);
 
-                            transferInertia(sourceForceable, sinkForceable, force);
+                            transferKineticEnergy(sourceForceable, sinkForceable, force);
                         }
                         else if (shuntMode == ShuntMode.KillOrbitalVelocity)
                         {
@@ -629,7 +492,7 @@ namespace ExoticSolutions
                             remainingEEUpdate -= EEThrustCost * throttleLimit;
                             part.RequestResource(Constants.EEDefinition.id, EEDistanceCost + EEThrustCost * throttleLimit);
 
-                            transferInertia(sourceForceable, sinkForceable, force);
+                            transferKineticEnergy(sourceForceable, sinkForceable, force);
                         }
                         else if (shuntMode == ShuntMode.KillRelativeVelocity)
                         {
@@ -671,7 +534,7 @@ namespace ExoticSolutions
                                 remainingEEUpdate -= EEThrustCost * throttleLimit;
                                 part.RequestResource(Constants.EEDefinition.id, EEDistanceCost + EEThrustCost * throttleLimit);
 
-                                transferInertia(sourceForceable, sinkForceable, force);
+                                transferKineticEnergy(sourceForceable, sinkForceable, force);
                             }
                         }
                         else
