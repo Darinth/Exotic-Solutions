@@ -87,6 +87,9 @@ namespace ExoticSolutions
         public bool sinkValid;
         public Forceable sinkForceable = new Forceable();
 
+        [KSPField]
+        public string shortName = "Kinetic Shunt";
+
         [KSPEvent(active = true, guiActive = true, guiActiveEditor = false, guiActiveUncommand = false, guiName = "Activate Kinetic Shunt", name = "ShuntToggle", requireFullControl = true)]
         public void ShuntToggle()
         {
@@ -103,13 +106,13 @@ namespace ExoticSolutions
         public void ActivateShunt()
         {
             active = true;
-            Events["ShuntToggle"].guiName = "Deactivate Kinetic Shunt";
+            Events["ShuntToggle"].guiName = "Deactivate " + shortName;
         }
 
         public void DeactivateShunt()
         {
             active = false;
-            Events["ShuntToggle"].guiName = "Activate Kinetic Shunt";
+            Events["ShuntToggle"].guiName = "Activate " + shortName;
         }
 
         [KSPAction(guiName = "Toggle Kinetic Shunt", requireFullControl = true)]
@@ -152,11 +155,17 @@ namespace ExoticSolutions
             updateSinkTargetFromString();
             sourceForceable.setRanges((float)minForceloadRange);
             sinkForceable.setRanges((float)minForceloadRange);
-            if(active) Events["ShuntToggle"].guiName = "Deactivate Kinetic Shunt";
+            if(active)
+                Events["ShuntToggle"].guiName = "Deactivate " + shortName;
+            else
+                Events["ShuntToggle"].guiName = "Activate " + shortName;
             Fields["sourceTargetString"].guiActive = allowSourceChange;
             Fields["sourceTargetString"].guiActiveEditor = allowSourceChange;
             Fields["sinkTargetString"].guiActive = allowSinkChange;
             Fields["sinkTargetString"].guiActiveEditor = allowSinkChange;
+            Actions["ActionToggleExcitationField"].guiName = "Toggle " + shortName;
+            Actions["ActionActivateExcitationField"].guiName = "Activate " + shortName;
+            Actions["ActionDeactivateExcitationField"].guiName = "Deactivate " + shortName;
         }
 
         public override void OnActive()
