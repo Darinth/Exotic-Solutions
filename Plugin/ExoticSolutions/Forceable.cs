@@ -8,6 +8,8 @@ namespace ExoticSolutions
 {
     class Forceable : IEquatable<Forceable>
     {
+        float ranges;
+
         private enum ForceableType
         {
             part = 0,
@@ -59,6 +61,14 @@ namespace ExoticSolutions
             }
             else if(forceableType == ForceableType.vessel)
             {
+                if (!((Vessel)forceTarget).loaded)
+                {
+                    ((Vessel)forceTarget).Load();
+                }
+                if (!((Vessel)forceTarget).rootPart.Modules.Contains<ModuleRangeReverter>())
+                {
+                    ModuleRangeReverter.SetVesselRanges(((Vessel)forceTarget), ranges + 2000, ranges + 10000, ranges + 5000, ranges, ranges);
+                }
                 ((Vessel)forceTarget).addForce(force, mode);
             }
         }
@@ -212,6 +222,11 @@ namespace ExoticSolutions
             {
                 return 0;
             }
+        }
+
+        public void setRanges(float ranges)
+        {
+            this.ranges = ranges;
         }
     }
 }

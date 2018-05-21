@@ -54,6 +54,7 @@
     <Compile Include="ModuleExoticsCore.cs" />
     <Compile Include="ModuleInertialShunt.cs" />
     <Compile Include="ModuleOrbitalResourceConverter.cs" />
+    <Compile Include="ModuleRangeReverter.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="vesselExtensions.cs" />
   </ItemGroup>

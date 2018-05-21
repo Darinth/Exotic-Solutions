@@ -54,6 +54,15 @@ namespace ExoticSolutions
         [KSPField]
         public double maxEESec = 0.015f;
 
+        [KSPField]
+        public double minForceloadRange = 35000d;
+
+        [KSPField]
+        public bool allowSourceChange = true;
+
+        [KSPField]
+        public bool allowSinkChange = true;
+
         [KSPField(isPersistant = true, guiActive = true, guiActiveEditor = true, guiName = "Mode", advancedTweakable = true), UI_ChooseOption(display = new string[] { "Off", "Manual", "Kill Surface Belocity", "Kill Orbital Velocity", "Kill Relative Velocity", "Set Target Distance" }, options = new string[] { "Off", "ManualControl", "KillSurfaceVelocity", "KillOrbitalVelocity", "KillRelativeVelocity", "SetTargetDistance" })]
         public string shuntModeString = "ManualControl";
         public ShuntMode shuntMode = ShuntMode.ManualControl;
@@ -141,6 +150,19 @@ namespace ExoticSolutions
             updateShuntModeFromString();
             updateSourceTargetFromString();
             updateSinkTargetFromString();
+            sourceForceable.setRanges((float)minForceloadRange);
+            sinkForceable.setRanges((float)minForceloadRange);
+            if(active) Events["ShuntToggle"].guiName = "Deactivate Kinetic Shunt";
+            if (!allowSourceChange) Fields["sourceTargetString"].uiControlEditor = null;
+            if (!allowSourceChange) Fields["sourceTargetString"].uiControlFlight = null;
+            if (!allowSinkChange) Fields["sinkTargetString"].uiControlEditor = null;
+            if (!allowSinkChange) Fields["sinkTargetString"].uiControlFlight = null;
+        }
+
+        public override void OnActive()
+        {
+            base.OnActive();
+            ActivateShunt();
         }
 
         private void ShuntModeStringChanged(BaseField field, object what)
@@ -502,6 +524,8 @@ namespace ExoticSolutions
                 }
                 else if(active)
                 {
+                    if(!part.vessel.rootPart.Modules.Contains<ModuleRangeReverter>())
+                        ModuleRangeReverter.SetVesselRanges(vessel, (float)minForceloadRange + 2000, (float)minForceloadRange + 10000, (float)minForceloadRange + 5000, (float)minForceloadRange, (float)minForceloadRange);
                     double EEAvailable;
                     double EEMax;
                     double maxEEUpdate = maxEESec * TimeWarp.fixedDeltaTime;
