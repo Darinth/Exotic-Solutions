@@ -52,7 +52,7 @@
     <Compile Include="ModuleGraviticDrive.cs" />
     <Compile Include="ModuleImpulseDrive.cs" />
     <Compile Include="ModuleExoticsCore.cs" />
-    <Compile Include="ModuleInertialShunt.cs" />
+    <Compile Include="ModuleKineticShunt.cs" />
     <Compile Include="ModuleOrbitalResourceConverter.cs" />
     <Compile Include="ModuleRangeReverter.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
