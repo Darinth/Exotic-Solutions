@@ -407,6 +407,27 @@ namespace ExoticSolutions
 
                     double remainingEEUpdate = maxEEUpdate;
 
+                    if (vessel.ctrlState.yaw != 0 || vessel.ctrlState.pitch != 0 || vessel.ctrlState.roll != 0)
+                    {
+                        double EETorqueCost = Math.Max(Math.Max(vessel.ctrlState.yaw, vessel.ctrlState.pitch), vessel.ctrlState.roll) * maxTorqueEE * TimeWarp.fixedDeltaTime;
+                        double throttleLimit;
+
+                        if (remainingEEUpdate < EETorqueCost)
+                        {
+                            throttleLimit = remainingEEUpdate / EETorqueCost;
+                            torqueStatus = "Power Limited " + throttleLimit.ToString("P2");
+                        }
+                        else
+                        {
+                            throttleLimit = 1;
+                            torqueStatus = "Full power";
+                        }
+
+                        part.Rigidbody.AddTorque(transform.forward * (float)maxTorque * -vessel.ctrlState.yaw * (float)throttleLimit * TimeWarp.fixedDeltaTime, ForceMode.Impulse);
+                        part.Rigidbody.AddTorque(transform.right * (float)maxTorque * -vessel.ctrlState.pitch * (float)throttleLimit * TimeWarp.fixedDeltaTime, ForceMode.Impulse);
+                        part.Rigidbody.AddTorque(transform.up * (float)maxTorque * -vessel.ctrlState.roll * (float)throttleLimit * TimeWarp.fixedDeltaTime, ForceMode.Impulse);
+                    }
+
                     sourceDistance = sourceForceable.distanceFrom(part);
                     sinkDistance = sinkForceable.distanceFrom(part);
 
@@ -546,27 +567,6 @@ namespace ExoticSolutions
                     {
                         thrustStatus = "Max Distance Exceeded";
                         remainingEEUpdate += EEDistanceCost;
-                    }
-
-                    if (vessel.ctrlState.yaw != 0 || vessel.ctrlState.pitch != 0 || vessel.ctrlState.roll != 0)
-                    {
-                        double EETorqueCost = Math.Max(Math.Max(vessel.ctrlState.yaw, vessel.ctrlState.pitch), vessel.ctrlState.roll) * maxTorqueEE * TimeWarp.fixedDeltaTime;
-                        double throttleLimit;
-
-                        if (remainingEEUpdate < EETorqueCost)
-                        {
-                            throttleLimit = remainingEEUpdate / EETorqueCost;
-                            torqueStatus = "Power Limited " + throttleLimit.ToString("P2");
-                        }
-                        else
-                        {
-                            throttleLimit = 1;
-                            torqueStatus = "Full power";
-                        }
-
-                        part.Rigidbody.AddTorque(transform.forward * (float)maxTorque * -vessel.ctrlState.yaw * (float)throttleLimit * TimeWarp.fixedDeltaTime, ForceMode.Impulse);
-                        part.Rigidbody.AddTorque(transform.right * (float)maxTorque * -vessel.ctrlState.pitch * (float)throttleLimit * TimeWarp.fixedDeltaTime, ForceMode.Impulse);
-                        part.Rigidbody.AddTorque(transform.up * (float)maxTorque * -vessel.ctrlState.roll * (float)throttleLimit * TimeWarp.fixedDeltaTime, ForceMode.Impulse);
                     }
                 }
                 else
