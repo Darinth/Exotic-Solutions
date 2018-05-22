@@ -90,6 +90,9 @@ namespace ExoticSolutions
         [KSPField]
         public string shortName = "Kinetic Shunt";
 
+        [KSPField(isPersistant = true, guiActive = true, guiActiveEditor = true, guiName = "Torque", advancedTweakable = true), UI_Toggle(disabledText = "Inactive", enabledText = "Active")]
+        public bool applyTorque = true;
+
         [KSPEvent(active = true, guiActive = true, guiActiveEditor = false, guiActiveUncommand = false, guiName = "Activate Kinetic Shunt", name = "ShuntToggle", requireFullControl = true)]
         public void ShuntToggle()
         {
@@ -155,7 +158,7 @@ namespace ExoticSolutions
             updateSinkTargetFromString();
             sourceForceable.setRanges((float)minForceloadRange);
             sinkForceable.setRanges((float)minForceloadRange);
-            if(active)
+            if (active)
                 Events["ShuntToggle"].guiName = "Deactivate " + shortName;
             else
                 Events["ShuntToggle"].guiName = "Activate " + shortName;
@@ -374,60 +377,61 @@ namespace ExoticSolutions
         {
             if (HighLogic.LoadedSceneIsFlight)
             {
+                double EEAvailable;
+                double EEMax;
+                double maxEEUpdate = maxEESec * TimeWarp.fixedDeltaTime;
+                part.GetConnectedResourceTotals(Constants.EEDefinition.id, out EEAvailable, out EEMax);
+                if (EEAvailable < maxEEUpdate)
+                    maxEEUpdate = EEAvailable;
+
+                double remainingEEUpdate = maxEEUpdate;
+
+                if (applyTorque && (vessel.ctrlState.yaw != 0 || vessel.ctrlState.pitch != 0 || vessel.ctrlState.roll != 0))
+                {
+                    double EETorqueCost = Math.Max(Math.Max(vessel.ctrlState.yaw, vessel.ctrlState.pitch), vessel.ctrlState.roll) * maxTorqueEE * TimeWarp.fixedDeltaTime;
+                    double throttleLimit;
+
+                    if (remainingEEUpdate < EETorqueCost)
+                    {
+                        throttleLimit = remainingEEUpdate / EETorqueCost;
+                        torqueStatus = "Power Limited " + throttleLimit.ToString("P2");
+                    }
+                    else
+                    {
+                        throttleLimit = 1;
+                        torqueStatus = "Full power";
+                    }
+
+                    part.Rigidbody.AddTorque(transform.forward * (float)maxTorque * -vessel.ctrlState.yaw * (float)throttleLimit * TimeWarp.fixedDeltaTime, ForceMode.Impulse);
+                    part.Rigidbody.AddTorque(transform.right * (float)maxTorque * -vessel.ctrlState.pitch * (float)throttleLimit * TimeWarp.fixedDeltaTime, ForceMode.Impulse);
+                    part.Rigidbody.AddTorque(transform.up * (float)maxTorque * -vessel.ctrlState.roll * (float)throttleLimit * TimeWarp.fixedDeltaTime, ForceMode.Impulse);
+                }
+                else
+                {
+                    torqueStatus = "Inactive";
+                }
+
                 updateForceables();
 
                 //Test to make sure we have a valid sink
                 if (!sinkValid)
                 {
                     thrustStatus = "No Sink";
-                    torqueStatus = "No Sink";
                     this.sourceDistance = 0f;
                 }
                 else if (!sourceValid)
                 {
                     thrustStatus = "No Source";
-                    torqueStatus = "No Source";
                     this.sourceDistance = 0f;
                 }
                 else if (sinkForceable.Equals(sourceForceable))
                 {
                     thrustStatus = "Source & Sink Same";
-                    torqueStatus = "Source & Sink Same";
                 }
-                else if(active)
+                else if (active)
                 {
-                    if(!part.vessel.rootPart.Modules.Contains<ModuleRangeReverter>())
+                    if (!part.vessel.rootPart.Modules.Contains<ModuleRangeReverter>())
                         ModuleRangeReverter.SetVesselRanges(vessel, (float)minForceloadRange + 2000, (float)minForceloadRange + 10000, (float)minForceloadRange + 5000, (float)minForceloadRange, (float)minForceloadRange);
-                    double EEAvailable;
-                    double EEMax;
-                    double maxEEUpdate = maxEESec * TimeWarp.fixedDeltaTime;
-                    part.GetConnectedResourceTotals(Constants.EEDefinition.id, out EEAvailable, out EEMax);
-                    if (EEAvailable < maxEEUpdate)
-                        maxEEUpdate = EEAvailable;
-
-                    double remainingEEUpdate = maxEEUpdate;
-
-                    if (vessel.ctrlState.yaw != 0 || vessel.ctrlState.pitch != 0 || vessel.ctrlState.roll != 0)
-                    {
-                        double EETorqueCost = Math.Max(Math.Max(vessel.ctrlState.yaw, vessel.ctrlState.pitch), vessel.ctrlState.roll) * maxTorqueEE * TimeWarp.fixedDeltaTime;
-                        double throttleLimit;
-
-                        if (remainingEEUpdate < EETorqueCost)
-                        {
-                            throttleLimit = remainingEEUpdate / EETorqueCost;
-                            torqueStatus = "Power Limited " + throttleLimit.ToString("P2");
-                        }
-                        else
-                        {
-                            throttleLimit = 1;
-                            torqueStatus = "Full power";
-                        }
-
-                        part.Rigidbody.AddTorque(transform.forward * (float)maxTorque * -vessel.ctrlState.yaw * (float)throttleLimit * TimeWarp.fixedDeltaTime, ForceMode.Impulse);
-                        part.Rigidbody.AddTorque(transform.right * (float)maxTorque * -vessel.ctrlState.pitch * (float)throttleLimit * TimeWarp.fixedDeltaTime, ForceMode.Impulse);
-                        part.Rigidbody.AddTorque(transform.up * (float)maxTorque * -vessel.ctrlState.roll * (float)throttleLimit * TimeWarp.fixedDeltaTime, ForceMode.Impulse);
-                    }
-
                     sourceDistance = sourceForceable.distanceFrom(part);
                     sinkDistance = sinkForceable.distanceFrom(part);
 
@@ -572,7 +576,6 @@ namespace ExoticSolutions
                 else
                 {
                     thrustStatus = "Inactive";
-                    torqueStatus = "Inactive";
                 }
             }
         }
