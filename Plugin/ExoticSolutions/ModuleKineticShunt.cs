@@ -147,6 +147,9 @@ namespace ExoticSolutions
             Fields["sinkTargetString"].uiControlEditor.onFieldChanged += sinkTargetStringChanged;
             Fields["sinkTargetString"].uiControlFlight.onFieldChanged += sinkTargetStringChanged;
 
+            stagingToggleEnabledEditor = true;
+            stagingToggleEnabledFlight = true;
+
             base.OnAwake();
         }
 
