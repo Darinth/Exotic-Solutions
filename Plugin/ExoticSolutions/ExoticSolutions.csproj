@@ -46,6 +46,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Constants.cs" />
+    <Compile Include="ModuleEnergyShield.cs" />
     <Compile Include="ExoticSolutionsScenario.cs" />
     <Compile Include="Forceable.cs" />
     <Compile Include="ModuleExoticMaterialsResourceDisplay.cs" />
