@@ -8,73 +8,200 @@ namespace ExoticSolutions
 {
     class ModuleEnergyShield : PartModule, IAirstreamShield
     {
+        [KSPField]
+        public double shieldHeatCost = 0.1;
+
+        [KSPField]
+        public double shieldHeatThreshhold = 1000;
+
+        [KSPField]
+        public double EEToShieldRatio = 1000;
+
+        [KSPField]
+        public double EEToShieldRate = 100;
+
         GameObject shieldObject;
+        GameObject colliderObject;
+        Collider shieldCollider;
 
         [KSPField(isPersistant = true)]
         bool shieldOn = false;
 
-        bool updateShield = true;
+        List<Callback<IAirstreamShield>> shieldCallbacks;
+
+        PartResource shieldPower;
+
+        bool shieldInitialized = false;
+
+        public double generateShieldEnergy(double amount)
+        {
+            if (vessel)
+            {
+                double EEAvailable;
+                double EEMax;
+                part.GetConnectedResourceTotals(Constants.EEDefinition.id, out EEAvailable, out EEMax, true);
+
+                if (EEAvailable < (amount / EEToShieldRatio))
+                    amount = EEAvailable * EEToShieldRatio;
+
+                double shieldSpace = shieldPower.maxAmount - shieldPower.amount;
+                if (shieldSpace < amount)
+                    amount = shieldSpace;
+                shieldPower.amount += amount;
+                part.RequestResource(Constants.EEDefinition.id, amount/EEToShieldRatio);
+                return amount;
+            }
+            return 0d;
+        }
 
         public override void OnAwake()
         {
             base.OnAwake();
             shieldObject = gameObject.GetChild("SphereShield");
-            KSPLog.print("shieldObject: " + shieldObject);
-            //shieldObject.SetActive(false);
+            colliderObject = shieldObject.GetChild("collider");
+            shieldCollider = colliderObject.GetComponent<MeshCollider>();
+            shieldCallbacks = new List<Callback<IAirstreamShield>>();
+            shieldPower = this.part.Resources[Constants.SPDefinition.name];
+            shieldObject.SetActive(false);
         }
 
         public override void OnInitialize()
         {
-            base.OnInitialize();
-            /*if (!shieldOn)
+            if (vessel)
             {
-                part.DragCubes.SetCubeWeight("Default", 1);
-                part.DragCubes.SetCubeWeight("Shield", 0);
-                shieldObject.SetActive(false);
+                base.OnInitialize();
+                //part.GetPartColliders().AddUnique(shieldCollider);
+                foreach (Part part in vessel.parts)
+                {
+                    if (part != this.part)
+                        shieldCallbacks.Add(part.AddShield(this));
+                }
+                foreach (Callback<IAirstreamShield> callback in shieldCallbacks)
+                {
+                    callback(this);
+                }
+                if (!shieldOn)
+                {
+                    part.DragCubes.SetCubeWeight("Default", 1);
+                    part.DragCubes.SetCubeWeight("Shield", 0);
+                }
+                else
+                {
+                    shieldObject.SetActive(true);
+                    CollisionManager.IgnoreCollidersOnVessel(vessel, new Collider[] { shieldCollider });
+                    shieldInitialized = true;
+                    part.DragCubes.SetCubeWeight("Default", 0);
+                    part.DragCubes.SetCubeWeight("Shield", 1);
+                }
             }
-            else
-            {
-                part.DragCubes.SetCubeWeight("Default", 0);
-                part.DragCubes.SetCubeWeight("Shield", 1);
-            }*/
         }
 
-        [KSPEvent(active = true, guiActive = true, guiActiveEditor = true, guiActiveUncommand = false, guiName = "LOL Shield", name = "LOLShield", requireFullControl = true)]
-        public void LOLShield()
+        [KSPEvent(active = true, guiActive = true, guiActiveEditor = true, guiActiveUncommand = false, guiName = "Activate Shield", name = "ShieldToggle", requireFullControl = true)]
+        public void ShieldToggle()
         {
-            shieldOn = !shieldOn;
-            updateShield = true;
-            //shieldObject.transform.localPosition = gameObject.GetChild("ksp_s_processorSmall_fbx").transform.localPosition;
-            //shieldObject.transform.localPosition = part.boundsCentroidOffset;
-            //shieldObject.transform.localPosition = part.CenterOfDisplacement;
-            //Vector3 velocity = part.Rigidbody.velocity;
-            //shieldObject.SetActive(true);
-            //part.Rigidbody.velocity = velocity;
-            //foreach(Part p in vessel.parts)
-            //{
-            //p.AddShield(this);
-            //}
+            if (shieldOn)
+                DeactivateShield();
+            else
+                ActivateShield();
+        }
+
+        public void OnCollisionEnter(Collision collision)
+        {
+            bool shieldCollided = false;
+            foreach(ContactPoint contactPoint in collision.contacts)
+            {
+                if(contactPoint.thisCollider == shieldCollider)
+                {
+                    shieldCollided = true;
+                    break;
+                }
+            }
+            if(shieldCollided)
+            {
+                double energyRequired = collision.impulse.magnitude * 2;
+                KSPLog.print(energyRequired);
+
+                double SPReceived = part.RequestResource(Constants.SPDefinition.id, energyRequired);
+                if ((energyRequired - SPReceived) > 1d)
+                    part.explode();
+            }
+        }
+
+        public void ActivateShield()
+        {
+            Events["ShieldToggle"].guiName = "Deactivate Shield";
+            shieldOn = true;
+            part.DragCubes.SetCubeWeight("Default", 0);
+            part.DragCubes.SetCubeWeight("Shield", 1);
+            shieldObject.SetActive(true);
+            if (!shieldInitialized && vessel != null)
+            {
+                shieldInitialized = true;
+                CollisionManager.IgnoreCollidersOnVessel(vessel, new Collider[] { shieldCollider });
+            }
+            foreach (Callback<IAirstreamShield> callback in shieldCallbacks)
+            {
+                callback(this);
+            }
+        }
+
+        public void DeactivateShield()
+        {
+            Events["ShieldToggle"].guiName = "Activate Shield";
+            shieldOn = false;
+            part.DragCubes.SetCubeWeight("Default", 1);
+            part.DragCubes.SetCubeWeight("Shield", 0);
+            shieldObject.SetActive(false);
+            foreach (Callback<IAirstreamShield> callback in shieldCallbacks)
+            {
+                callback(this);
+            }
+        }
+
+        [KSPAction(guiName = "Toggle Shield", requireFullControl = true)]
+        public void ActionToggleExcitationField(KSPActionParam actionParams)
+        {
+            ShieldToggle();
+        }
+
+        [KSPAction(guiName = "Activate Shield", requireFullControl = true)]
+        public void ActionActivateExcitationField(KSPActionParam actionParams)
+        {
+            ActivateShield();
+        }
+
+        [KSPAction(guiName = "Deactivate Shield", requireFullControl = true)]
+        public void ActionDeactivateExcitationField(KSPActionParam actionParams)
+        {
+            DeactivateShield();
+        }
+
+        public void OnDestroy()
+        {
+            shieldOn = false;
+            foreach (Callback<IAirstreamShield> callback in shieldCallbacks)
+            {
+                callback(this);
+            }
         }
 
         public void FixedUpdate()
         {
-            if (updateShield)
+            if (vessel)
             {
-                if (shieldOn)
+                generateShieldEnergy(EEToShieldRate * TimeWarp.fixedDeltaTime);
+
+                if (part.skinTemperature > shieldHeatThreshhold)
                 {
-                    updateShield = false;
-                    part.DragCubes.SetCubeWeight("Default", 0);
-                    part.DragCubes.SetCubeWeight("Shield", 1);
-                    shieldObject.SetActive(true);
-                    part.Update();
+                    double SPReceived = part.RequestResource(Constants.SPDefinition.id, (part.skinTemperature - shieldHeatThreshhold) * shieldHeatCost);
+                    part.skinTemperature -= SPReceived / shieldHeatCost;
+                    KSPLog.print("Shield soaked " + SPReceived / shieldHeatCost + " heat.");
                 }
-                else
+                if (part.temperature > shieldHeatThreshhold)
                 {
-                    updateShield = false;
-                    part.DragCubes.SetCubeWeight("Default", 1);
-                    part.DragCubes.SetCubeWeight("Shield", 0);
-                    shieldObject.SetActive(false);
-                    part.Update();
+                    double SPReceived = part.RequestResource(Constants.SPDefinition.id, (part.temperature - shieldHeatThreshhold) * shieldHeatCost);
+                    part.temperature -= SPReceived / shieldHeatCost;
+                    KSPLog.print("Shield soaked " + SPReceived / shieldHeatCost + " heat.");
                 }
             }
 
@@ -82,7 +209,7 @@ namespace ExoticSolutions
 
         public bool ClosedAndLocked()
         {
-            return true;
+            return shieldOn;
         }
 
         public Vessel GetVessel()

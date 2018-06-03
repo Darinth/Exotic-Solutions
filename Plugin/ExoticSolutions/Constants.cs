@@ -41,6 +41,17 @@ namespace ExoticSolutions
             }
         }
 
+        private static PartResourceDefinition pSPDefinition;
+        public static PartResourceDefinition SPDefinition
+        {
+            get
+            {
+                if (pSPDefinition == null)
+                    pSPDefinition = PartResourceLibrary.Instance.GetDefinition("ShieldPower");
+                return pSPDefinition;
+            }
+        }
+
         public static ExoticSolutionsScenario exoticSolutionScenario;
     }
 }
