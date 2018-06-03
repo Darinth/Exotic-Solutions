@@ -33,6 +33,11 @@ namespace ExoticSolutions
 
         bool shieldInitialized = false;
 
+        float baseCrashTolerance;
+
+        [KSPField(isPersistant = true)]
+        public bool shieldGeneratorOn = false;
+
         public double generateShieldEnergy(double amount)
         {
             if (vessel)
@@ -63,6 +68,7 @@ namespace ExoticSolutions
             shieldCallbacks = new List<Callback<IAirstreamShield>>();
             shieldPower = this.part.Resources[Constants.SPDefinition.name];
             shieldObject.SetActive(false);
+            baseCrashTolerance = part.crashTolerance;
         }
 
         public override void OnInitialize()
@@ -105,28 +111,6 @@ namespace ExoticSolutions
                 ActivateShield();
         }
 
-        public void OnCollisionEnter(Collision collision)
-        {
-            bool shieldCollided = false;
-            foreach(ContactPoint contactPoint in collision.contacts)
-            {
-                if(contactPoint.thisCollider == shieldCollider)
-                {
-                    shieldCollided = true;
-                    break;
-                }
-            }
-            if(shieldCollided)
-            {
-                double energyRequired = collision.impulse.magnitude * 2;
-                KSPLog.print(energyRequired);
-
-                double SPReceived = part.RequestResource(Constants.SPDefinition.id, energyRequired);
-                if ((energyRequired - SPReceived) > 1d)
-                    part.explode();
-            }
-        }
-
         public void ActivateShield()
         {
             Events["ShieldToggle"].guiName = "Deactivate Shield";
@@ -156,24 +140,89 @@ namespace ExoticSolutions
             {
                 callback(this);
             }
+            part.crashTolerance = baseCrashTolerance;
         }
 
         [KSPAction(guiName = "Toggle Shield", requireFullControl = true)]
-        public void ActionToggleExcitationField(KSPActionParam actionParams)
+        public void ActionToggleShield(KSPActionParam actionParams)
         {
             ShieldToggle();
         }
 
         [KSPAction(guiName = "Activate Shield", requireFullControl = true)]
-        public void ActionActivateExcitationField(KSPActionParam actionParams)
+        public void ActionActivateShield(KSPActionParam actionParams)
         {
             ActivateShield();
         }
 
         [KSPAction(guiName = "Deactivate Shield", requireFullControl = true)]
-        public void ActionDeactivateExcitationField(KSPActionParam actionParams)
+        public void ActionDeactivateShieldd(KSPActionParam actionParams)
         {
             DeactivateShield();
+        }
+
+        [KSPEvent(active = true, guiActive = true, guiActiveEditor = true, guiActiveUncommand = false, guiName = "Activate Generator", name = "GeneratorToggle", requireFullControl = true)]
+        public void GeneratorToggle()
+        {
+            if (shieldGeneratorOn)
+                DeactivateGenerator();
+            else
+                ActivateGenerator();
+        }
+
+        public void ActivateGenerator()
+        {
+            Events["GeneratorToggle"].guiName = "Deactivate Generator";
+            shieldGeneratorOn = true;
+        }
+
+        public void DeactivateGenerator()
+        {
+            Events["GeneratorToggle"].guiName = "Activate Generator";
+            shieldGeneratorOn = false;
+        }
+
+        [KSPAction(guiName = "Toggle Generator", requireFullControl = true)]
+        public void ActionToggleGenerator(KSPActionParam actionParams)
+        {
+            ShieldToggle();
+        }
+
+        [KSPAction(guiName = "Activate Generator", requireFullControl = true)]
+        public void ActionActivateGenerator(KSPActionParam actionParams)
+        {
+            ActivateShield();
+        }
+
+        [KSPAction(guiName = "Deactivate Generator", requireFullControl = true)]
+        public void ActionDeactivateGenerator(KSPActionParam actionParams)
+        {
+            DeactivateShield();
+        }
+
+        public void OnCollisionEnter(Collision collision)
+        {
+            if (shieldOn)
+            {
+                bool shieldCollided = false;
+                foreach (ContactPoint contactPoint in collision.contacts)
+                {
+                    if (contactPoint.thisCollider == shieldCollider)
+                    {
+                        shieldCollided = true;
+                        break;
+                    }
+                }
+                if (shieldCollided)
+                {
+                    double energyRequired = collision.impulse.magnitude * 2;
+                    KSPLog.print(energyRequired);
+
+                    double SPReceived = part.RequestResource(Constants.SPDefinition.id, energyRequired);
+                    if ((energyRequired - SPReceived) > 1d)
+                        part.explode();
+                }
+            }
         }
 
         public void OnDestroy()
@@ -189,19 +238,24 @@ namespace ExoticSolutions
         {
             if (vessel)
             {
-                generateShieldEnergy(EEToShieldRate * TimeWarp.fixedDeltaTime);
+                if(shieldGeneratorOn)
+                    generateShieldEnergy(EEToShieldRate * TimeWarp.fixedDeltaTime);
 
-                if (part.skinTemperature > shieldHeatThreshhold)
+                if (shieldOn)
                 {
-                    double SPReceived = part.RequestResource(Constants.SPDefinition.id, (part.skinTemperature - shieldHeatThreshhold) * shieldHeatCost);
-                    part.skinTemperature -= SPReceived / shieldHeatCost;
-                    KSPLog.print("Shield soaked " + SPReceived / shieldHeatCost + " heat.");
-                }
-                if (part.temperature > shieldHeatThreshhold)
-                {
-                    double SPReceived = part.RequestResource(Constants.SPDefinition.id, (part.temperature - shieldHeatThreshhold) * shieldHeatCost);
-                    part.temperature -= SPReceived / shieldHeatCost;
-                    KSPLog.print("Shield soaked " + SPReceived / shieldHeatCost + " heat.");
+                    if (part.skinTemperature > shieldHeatThreshhold)
+                    {
+                        double SPReceived = part.RequestResource(Constants.SPDefinition.id, (part.skinTemperature - shieldHeatThreshhold) * shieldHeatCost);
+                        part.skinTemperature -= SPReceived / shieldHeatCost;
+                        KSPLog.print("Shield soaked " + SPReceived / shieldHeatCost + " heat.");
+                    }
+                    if (part.temperature > shieldHeatThreshhold)
+                    {
+                        double SPReceived = part.RequestResource(Constants.SPDefinition.id, (part.temperature - shieldHeatThreshhold) * shieldHeatCost);
+                        part.temperature -= SPReceived / shieldHeatCost;
+                        KSPLog.print("Shield soaked " + SPReceived / shieldHeatCost + " heat.");
+                    }
+                    part.crashTolerance = (float)shieldPower.amount / 30;
                 }
             }
 
