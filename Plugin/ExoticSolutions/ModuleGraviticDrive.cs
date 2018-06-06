@@ -8,38 +8,33 @@ namespace ExoticSolutions
 {
     class ModuleGraviticDrive : PartModule
     {
+        [KSPField(isPersistant = true)]
+        bool active;
+
         //Actual maximum amount of tonnage part can lift.
         [KSPField]
         public float maxLiftTonnage = 100f;
 
         //EE cost per point of tonnage when initializing gravitic field
         [KSPField]
-        public float EEPerLiftTonnage = 1f;
+        public float EEPerLiftTonnage = 0.00083333333f;
 
         //EC cost per point of tonnage when actively lifting
         [KSPField]
         public float ECPerLiftTonnage = 5f;
 
-        //Max tonnage when gravitic field was initialized
-        public float ActivatedMaxLiftTonnage = 200f;
-
         //Lift tonnage selected (used for both activating gravitic field and running it)
-        [KSPField(isPersistant = true, guiActive = true, guiActiveEditor = true, guiName = "Max Lift Tonnage"), UI_ScaleEdit(intervals = new float[] { 0, 100 }, incrementSlide = new float[] { 1 })]
-        public float SelectedLiftTonnage = 200f;
+        [KSPField(isPersistant = true, guiActive = true, guiActiveEditor = true, guiName = "Lift Tonnage"), UI_FloatRange(minValue = 0f, maxValue = 100f, stepIncrement = 1f)]
+        public float SelectedLiftTonnage = 0f;
 
-        //Time, in seconds, of the gravitic field
-        [KSPField(guiActive = true, guiActiveEditor = false, guiName = "Exotic Excitation Field Time"), UI_Label()]
-        private double EETime;
-
-        //EE required to activate gravitic field
-        [KSPField(guiActive = true, guiActiveEditor = true, guiName = "Exotic Energy Required", guiFormat = "F2"), UI_Label()]
-        public double EERequired = 0f;
+        [KSPField(guiActive = true, guiActiveEditor = true, guiName = "Exotic Energy Usage", guiFormat = "F2"), UI_Label()]
+        public double EEUsage = 0f;
 
         //Button to toggle gravitic field
         [KSPEvent(active = true, guiActive = true, guiActiveEditor = false, guiActiveUncommand = false, guiName = "Activate Gravitic Field", name = "GraviticFieldToggle", requireFullControl = true)]
         public void GraviticFieldToggle()
         {
-            if (EETime <= 0)
+            if (!active)
             {
 
                 InitializeGraviticField();
@@ -72,10 +67,8 @@ namespace ExoticSolutions
 
         public override void OnAwake()
         {
-            Fields["SelectedLiftTonnage"].uiControlEditor.onFieldChanged += ThrustOrISPChanged;
-            Fields["SelectedLiftTonnage"].uiControlFlight.onFieldChanged += ThrustOrISPChanged;
-
-            ((UI_ScaleEdit)Fields["SelectedLiftTonnage"].uiControlEditor).intervals[1] = maxLiftTonnage;
+            Fields["SelectedLiftTonnage"].uiControlEditor.onFieldChanged += TonnageChanged;
+            Fields["SelectedLiftTonnage"].uiControlFlight.onFieldChanged += TonnageChanged;
 
             base.OnAwake();
 
@@ -86,65 +79,58 @@ namespace ExoticSolutions
         {
             updateEE();
             base.OnStart(state);
+
+            ((UI_FloatRange)Fields["SelectedLiftTonnage"].uiControlEditor).minValue = -maxLiftTonnage;
+            ((UI_FloatRange)Fields["SelectedLiftTonnage"].uiControlEditor).maxValue = maxLiftTonnage;
         }
 
-        private void ThrustOrISPChanged(BaseField field, object what)
+        private void TonnageChanged(BaseField field, object what)
         {
-            if(EETime <= 0)
                 updateEE();
         }
 
         public void updateEE()
         {
-            EERequired = SelectedLiftTonnage * EEPerLiftTonnage;
-            if (EERequired < 1f) EERequired = 0.1 + Math.Pow(0.9, Math.Abs(EERequired - 2f));
+            EEUsage = Math.Abs(SelectedLiftTonnage * EEPerLiftTonnage);
         }
 
         public void InitializeGraviticField()
         {
-            double EEAvailable;
-            double EEMax;
-            part.GetConnectedResourceTotals(Constants.EEDefinition.id, out EEAvailable, out EEMax, true);
-
-            if (EEAvailable >= EERequired - 0.01)
-            {
-                part.RequestResource(Constants.EEDefinition.id, EERequired - 0.01);
-                Events["GraviticFieldToggle"].guiName = "Deactivate Gravitic Field";
-                ActivatedMaxLiftTonnage = SelectedLiftTonnage;
-                Fields["SelectedLiftTonnage"].guiName = "Active Lift Tonnage";
-                ((UI_ScaleEdit)Fields["SelectedLiftTonnage"].uiControlEditor).intervals[0] = -ActivatedMaxLiftTonnage;
-                ((UI_ScaleEdit)Fields["SelectedLiftTonnage"].uiControlEditor).intervals[1] = ActivatedMaxLiftTonnage;
-                SelectedLiftTonnage = 0f;
-                EETime = 600f;
-            }
+            active = true;
+            Events["GraviticFieldToggle"].guiName = "Deactivate Gravitic Field";
         }
 
         public void ShutdownGraviticField()
         {
-            Fields["SelectedLiftTonnage"].guiName = "Max Lift Tonnage";
-            ((UI_ScaleEdit)Fields["SelectedLiftTonnage"].uiControlEditor).intervals[0] = 0;
-            ((UI_ScaleEdit)Fields["SelectedLiftTonnage"].uiControlEditor).intervals[1] = maxLiftTonnage;
-            SelectedLiftTonnage = ActivatedMaxLiftTonnage;
-            Events["ExcitationFieldToggle"].guiName = "Activate Gravitic Field";
-            EETime = 0f;
+            active = false;
+            Events["GraviticFieldToggle"].guiName = "Activate Gravitic Field";
         }
 
         public void FixedUpdate()
         {
-            if (EETime > 0f)
+            if(active)
             {
                 if (SelectedLiftTonnage != 0)
                 {
+                    double driveLimit = 1;
+
                     double ECRequest = ECPerLiftTonnage * Math.Abs(SelectedLiftTonnage) * TimeWarp.fixedDeltaTime;
-                    double returnedEC = this.part.RequestResource(Constants.ECDefinition.id, ECRequest);
-                    Vector3 acceleration = vessel.graviticAcceleration * vessel.gravityMultiplier / part.mass * TimeWarp.fixedDeltaTime * SelectedLiftTonnage * -1 * (returnedEC / ECRequest);
+                    double AvailableEC, MaxEC;
+                    this.part.GetConnectedResourceTotals(Constants.ECDefinition.id, out AvailableEC, out MaxEC);
+                    if (ECRequest > AvailableEC)
+                        driveLimit = AvailableEC / ECRequest;
+
+                    double EERequest = EEPerLiftTonnage * Math.Abs(SelectedLiftTonnage) * TimeWarp.fixedDeltaTime;
+                    double AvailableEE, MaxEE;
+                    this.part.GetConnectedResourceTotals(Constants.EEDefinition.id, out AvailableEE, out MaxEE);
+                    if (EERequest > AvailableEE)
+                        driveLimit = Math.Min(AvailableEE / EERequest, driveLimit);
+
+                    this.part.RequestResource(Constants.ECDefinition.id, ECRequest * driveLimit);
+                    this.part.RequestResource(Constants.EEDefinition.id, EERequest * driveLimit);
+
+                    Vector3 acceleration = vessel.graviticAcceleration * vessel.gravityMultiplier / part.mass * TimeWarp.fixedDeltaTime * SelectedLiftTonnage * -1 * driveLimit;
                     part.Rigidbody.AddForce(acceleration, ForceMode.VelocityChange);
-                }
-                EETime -= TimeWarp.fixedDeltaTime;
-                if (EETime < 0f)
-                {
-                    EETime = 0f;
-                    ShutdownGraviticField();
                 }
             }
         }
