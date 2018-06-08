@@ -59,12 +59,6 @@ namespace ExoticSolutions
 {
     class ModuleImpulseDrive : ModuleEnginesFX
     {
-        [KSPEvent(active = true, guiActive = true, guiActiveEditor = false, guiActiveUncommand = true, guiName = "Log G-Force", name = "LogGeeForce", requireFullControl = false)]
-        public void LogGeeForce()
-        {
-            KSPLog.print("G-Force: " + vessel.geeForce + ", " + vessel.geeForce_immediate);
-        }
-
         //Thrust/ISP/this number provides you the with the fuel flow needed to achieve the selected thrust.
         private double ThrustIspToFuelFlowConstant;
         //Max fuel flow of base engine.
@@ -73,198 +67,132 @@ namespace ExoticSolutions
         private float BaseMaxThrust;
         //Atmo curve of base engine
         private FloatCurve BaseAtmosphereCurve;
+        //Density of fuel mixture
+        private float fuelRatioMultiplier;
 
-        //Time, in seconds, of the excitation field if the engine does not run
-        [KSPField(guiActive = true, guiActiveEditor = false, guiName = "Exotic Excitation Field Time"), UI_Label()]
-        private double EETime;
+        //Isp of engine operating in pure LfO mode
+        float baseLfOIsp = 310;
 
-        //Minimum thrust available in variable drive
         [KSPField]
-        public float MinVariableThrust = 1;
-
-        //Maximum thrust available in variable drive
-        [KSPField]
-        public float MaxVariableThrust = 5000;
-
-        //Minimum ISP available in variable drive
-        [KSPField]
-        public float MinVariableISP = 100;
+        public float maxEEFlow = 0.08f;
 
         //Maximum ISP available in variable drive
         [KSPField]
         public float MaxVariableISP = 5000;
 
-        [KSPField(isPersistant = true, guiActive = true, guiActiveEditor = true, guiName = "Thrust"), UI_ScaleEdit(intervals = new float[] { 0, 100 },incrementSlide = new float[] { 50 })]
-        public float SelectedThrust = 200f;
+        [KSPField]
+        public float VariableIspStep = 50;
 
         [KSPField(isPersistant = true, guiActive = true, guiActiveEditor = true, guiName = "ISP"), UI_ScaleEdit(intervals = new float[] { 0, 100 }, incrementSlide = new float[] { 50 })]
         public float SelectedISP = 350f;
 
-        [KSPField(guiActive = true, guiActiveEditor = true, guiName = "Exotic Energy Required", guiFormat = "F2"), UI_Label()]
-        //public string EERequiredText = "";
-        public double EERequired = 0f;
-
-        [KSPField]
-        public double EEMultiplier = 1f;
-
-        [KSPField]
-        public float EEToThrustRatio = 200;
-
-        [KSPField]
-        public float EEToISPRatio = 300;
-
-        [KSPEvent(active = true, guiActive = true, guiActiveEditor = false, guiActiveUncommand = false, guiName = "Activate Exotic Excitation Field", name = "ExcitationFieldToggle", requireFullControl = true)]
-        public void ExcitationFieldToggle()
-        {
-            if (EETime <= 0)
-            {
-
-                InitializeExoticExcitationField();
-            }
-            else
-            {
-
-                ShutdownExoticExcitationField();
-            }
-        }
-
-        [KSPAction(guiName = "Toggle Excitation Field", requireFullControl = true)]
-        public void ActionToggleExcitationField(KSPActionParam actionParams)
-        {
-            ExcitationFieldToggle();
-        }
-
-        [KSPAction(guiName = "Activate Excitation Field", requireFullControl = true)]
-        public void ActionActivateExcitationField(KSPActionParam actionParams)
-        {
-            InitializeExoticExcitationField();
-        }
-
-        [KSPAction(guiName = "Deactivate Excitation Field", requireFullControl = true)]
-        public void ActionDeactivateExcitationField(KSPActionParam actionParams)
-        {
-            ShutdownExoticExcitationField();
-        }
+        [KSPField(guiActive = true, guiActiveEditor = false, guiName = "Max EE Flow", guiFormat = "F4"), UI_Label()]
+        public float EEFlow = 0f;
 
         public override void OnAwake()
         {
-            Fields["SelectedThrust"].uiControlEditor.onFieldChanged += ThrustOrISPChanged;
-            Fields["SelectedThrust"].uiControlFlight.onFieldChanged += ThrustOrISPChanged;
-
-            Fields["SelectedISP"].uiControlEditor.onFieldChanged += ThrustOrISPChanged;
-            Fields["SelectedISP"].uiControlFlight.onFieldChanged += ThrustOrISPChanged;
-
-            ((UI_ScaleEdit)Fields["SelectedThrust"].uiControlEditor).intervals[0] = MinVariableThrust;
-            ((UI_ScaleEdit)Fields["SelectedThrust"].uiControlEditor).intervals[1] = MaxVariableThrust;
-            ((UI_ScaleEdit)Fields["SelectedThrust"].uiControlEditor).incrementSlide[0] = EEToThrustRatio;
-
-            ((UI_ScaleEdit)Fields["SelectedISP"].uiControlEditor).intervals[0] = MinVariableISP;
-            ((UI_ScaleEdit)Fields["SelectedISP"].uiControlEditor).intervals[1] = MaxVariableISP;
-            ((UI_ScaleEdit)Fields["SelectedISP"].uiControlEditor).incrementSlide[0] = EEToISPRatio;
+            Fields["SelectedISP"].uiControlEditor.onFieldChanged += IspChanged;
+            Fields["SelectedISP"].uiControlFlight.onFieldChanged += IspChanged;
 
             base.OnAwake();
+
+        }
+
+        public override void OnStart(StartState state)
+        {
+            ((UI_ScaleEdit)Fields["SelectedISP"].uiControlEditor).intervals[0] = atmosphereCurve.Evaluate(0);
+            ((UI_ScaleEdit)Fields["SelectedISP"].uiControlEditor).intervals[1] = MaxVariableISP;
+            ((UI_ScaleEdit)Fields["SelectedISP"].uiControlEditor).incrementSlide[0] = VariableIspStep;
 
             BaseMaxFuelflow = maxFuelFlow;
             BaseAtmosphereCurve = atmosphereCurve;
             BaseMaxThrust = maxThrust;
 
+            float fuelMixtureDensity = 0;
+            foreach (Propellant p in propellants)
+            {
+                PartResourceDefinition partResource = PartResourceLibrary.Instance.GetDefinition(p.id);
+                fuelMixtureDensity += partResource.density * p.ratio;
+            }
+            KSPLog.print("fuelMixtureDensity: " + fuelMixtureDensity);
+            fuelRatioMultiplier = maxFuelFlow / fuelMixtureDensity;
+            KSPLog.print("fuelRatioMultiplier: " + fuelRatioMultiplier);
+
             ThrustIspToFuelFlowConstant = maxThrust / maxFuelFlow / BaseAtmosphereCurve.Evaluate(0);
 
-            updateEE();
-        }
+            baseLfOIsp = BaseAtmosphereCurve.Evaluate(0);
 
-        public override void OnStart(StartState state)
-        {
-            updateEE();
-            //SelectedThrust = BaseMaxThrust;
-            //SelectedISP = BaseAtmosphereCurve.Evaluate(0);
-            resetEngineParams();
+            adjustEngineParams(SelectedISP);
+
             base.OnStart(state);
         }
 
-        private void ThrustOrISPChanged(BaseField field, object what)
+        private void IspChanged(BaseField field, object what)
         {
             KSPLog.print("ThrustOrISPChanged");
-            updateEE();
-            if (HighLogic.LoadedSceneIsEditor)
-                adjustEngineParams(SelectedThrust, SelectedISP);
+            adjustEngineParams(SelectedISP);
         }
 
-        public void updateEE()
+
+        [KSPEvent(active = true, guiActive = true, guiActiveEditor = false, guiActiveUncommand = false, guiName = "Activate Kinetic Shunt", name = "ShuntToggle", requireFullControl = true)]
+        public void logEngineData()
         {
-            float thrustChange = SelectedThrust - BaseMaxThrust;
-            double thrustCost = thrustChange / EEToThrustRatio;
-            float ISPChange = SelectedISP - BaseAtmosphereCurve.Evaluate(0);
-            double ISPCost = ISPChange / EEToISPRatio;
-            EERequired = (thrustCost + ISPCost) * EEMultiplier;
-            if (EERequired < 1f) EERequired = 0.1 + Math.Pow(0.9, Math.Abs(EERequired - 2f));
-            //EERequiredText = EERequired.ToString();
-            KSPLog.print("Update EERequired to " + EERequired);
-        }
-
-        public void InitializeExoticExcitationField()
-        {
-
-            double EEAvailable;
-            double EEMax;
-            part.GetConnectedResourceTotals(Constants.EEDefinition.id, out EEAvailable, out EEMax, true);
-
-            if (EEAvailable >= EERequired - 0.01)
+            KSPLog.print("maxFuelFlow: " + maxFuelFlow);
+            foreach(Propellant p in propellants)
             {
-                part.RequestResource(Constants.EEDefinition.id, EERequired - 0.01);
-                KSPLog.print("Rename");
-                Events["ExcitationFieldToggle"].guiName = "Deactivate Exotic Excitation Field";
-                adjustEngineParams(SelectedThrust, SelectedISP);
-                KSPLog.print("Set EETime");
-                EETime = 180f;
+                KSPLog.print(p.name + " id: " + p.id);
+                KSPLog.print(p.name + " ratio: " + p.ratio);
+                KSPLog.print(p.name + " getMaxFuelFlow: " + getMaxFuelFlow(p));
+                KSPLog.print(p.name + " name from id: " + PartResourceLibrary.Instance.GetDefinition(p.id).name);
             }
         }
 
-        public void ShutdownExoticExcitationField()
+        //EE ISP 2500
+        //newISP = (float)(newThrust/maxFuelFlow/ThrustIspToFuelFlowConstant);
+        private void adjustEngineParams(float newISP)
         {
-            Events["ExcitationFieldToggle"].guiName = "Activate Exotic Excitation Field";
-            resetEngineParams();
-            EETime = 0f;
-        }
+            //Calculate amount of EE needed to achieve new Isp & thrust
+            float LfOIspDifference = newISP - baseLfOIsp;
+            float MaxIspDifference = MaxVariableISP - baseLfOIsp;
+            float EMLfORatio = LfOIspDifference / MaxIspDifference * maxEEFlow / fuelRatioMultiplier; //1:1 mass ratio??
 
-        public new void FixedUpdate()
-        {
-            if (EETime > 0f)
+            ConfigNode loadNode = new ConfigNode();
+            ConfigNode newLfNode = loadNode.AddNode("PROPELLANT");
+            newLfNode.AddValue("name", "LiquidFuel");
+            newLfNode.AddValue("ratio", 0.9f);
+            ConfigNode newOxNode = loadNode.AddNode("PROPELLANT");
+            newOxNode.AddValue("name", "Oxidizer");
+            newOxNode.AddValue("ratio", 1.1f);
+            if (EMLfORatio > 0.0001f)
             {
-                EETime -= TimeWarp.fixedDeltaTime * (1f - requestedThrottle * 2);
-                if (EETime <= 0f)
-                {
-                    ShutdownExoticExcitationField();
-                }
+                ConfigNode newEENode = loadNode.AddNode("PROPELLANT");
+                newEENode.AddValue("name", "ExoticEnergies");
+                newEENode.AddValue("ratio", EMLfORatio);
             }
-            base.FixedUpdate();
-        }
+            this.Load(loadNode);
 
-        private void adjustEngineParams(float newThrust, float newISP)
-        {
-            KSPLog.print("set MaxThrust " + newThrust);
-            maxFuelFlow = (float)(newThrust / newISP / ThrustIspToFuelFlowConstant);
+            if(EMLfORatio > 0.0001f)
+            {
+                EEFlow = getMaxFuelFlow(propellants[2]);
+            }
+            else
+                EEFlow = 0f;
+
 
             KSPLog.print("Make new atmo curve " + newISP);
-            float frameMultiplier = newISP / BaseAtmosphereCurve.Evaluate(0);
+            //float frameMultiplier = newISP / BaseAtmosphereCurve.Evaluate(0);
             FloatCurve newAtmosphereCurve = new FloatCurve();
             AnimationCurve innerCurve = newAtmosphereCurve.Curve;
             foreach (Keyframe frame in BaseAtmosphereCurve.Curve.keys)
             {
-                Keyframe newframe = new Keyframe(frame.time, frame.value * frameMultiplier);
+                Keyframe newframe = new Keyframe(frame.time, frame.value + LfOIspDifference);
                 KSPLog.print("New frame: " + newframe.time + " " + newframe.value);
                 innerCurve.AddKey(newframe);
             }
             KSPLog.print("Set new atmo curve");
             atmosphereCurve = newAtmosphereCurve;
-            KSPLog.print("ISP at 0" + atmosphereCurve.Evaluate(0));
-            KSPLog.print("ISP at 1" + atmosphereCurve.Evaluate(1));
-        }
-
-        private void resetEngineParams()
-        {
-            maxFuelFlow = BaseMaxFuelflow;
-            atmosphereCurve = BaseAtmosphereCurve;
+            KSPLog.print("ISP at 0 atm: " + atmosphereCurve.Evaluate(0));
+            KSPLog.print("ISP at 1 atm: " + atmosphereCurve.Evaluate(1));
         }
     }
 }
