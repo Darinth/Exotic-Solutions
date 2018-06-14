@@ -156,7 +156,7 @@ namespace ExoticSolutions
         }
 
         [KSPAction(guiName = "Deactivate Shield", requireFullControl = true)]
-        public void ActionDeactivateShieldd(KSPActionParam actionParams)
+        public void ActionDeactivateShield(KSPActionParam actionParams)
         {
             DeactivateShield();
         }
