@@ -114,9 +114,9 @@ namespace ExoticSolutions
                 PartResourceDefinition partResource = PartResourceLibrary.Instance.GetDefinition(p.id);
                 fuelMixtureDensity += partResource.density * p.ratio;
             }
-            KSPLog.print("fuelMixtureDensity: " + fuelMixtureDensity);
+            //KSPLog.print("fuelMixtureDensity: " + fuelMixtureDensity);
             fuelRatioMultiplier = maxFuelFlow / fuelMixtureDensity;
-            KSPLog.print("fuelRatioMultiplier: " + fuelRatioMultiplier);
+            //KSPLog.print("fuelRatioMultiplier: " + fuelRatioMultiplier);
 
             ThrustIspToFuelFlowConstant = maxThrust / maxFuelFlow / BaseAtmosphereCurve.Evaluate(0);
 
@@ -129,12 +129,12 @@ namespace ExoticSolutions
 
         private void IspChanged(BaseField field, object what)
         {
-            KSPLog.print("ThrustOrISPChanged");
+            //KSPLog.print("ThrustOrISPChanged");
             adjustEngineParams(SelectedISP);
         }
 
 
-        [KSPEvent(active = true, guiActive = true, guiActiveEditor = false, guiActiveUncommand = false, guiName = "Activate Kinetic Shunt", name = "ShuntToggle", requireFullControl = true)]
+        /*[KSPEvent(active = true, guiActive = true, guiActiveEditor = false, guiActiveUncommand = false, guiName = "Activate Kinetic Shunt", name = "ShuntToggle", requireFullControl = true)]
         public void logEngineData()
         {
             KSPLog.print("maxFuelFlow: " + maxFuelFlow);
@@ -145,7 +145,7 @@ namespace ExoticSolutions
                 KSPLog.print(p.name + " getMaxFuelFlow: " + getMaxFuelFlow(p));
                 KSPLog.print(p.name + " name from id: " + PartResourceLibrary.Instance.GetDefinition(p.id).name);
             }
-        }
+        }*/
 
         //EE ISP 2500
         //newISP = (float)(newThrust/maxFuelFlow/ThrustIspToFuelFlowConstant);
@@ -179,20 +179,20 @@ namespace ExoticSolutions
                 EEFlow = 0f;
 
 
-            KSPLog.print("Make new atmo curve " + newISP);
+            //KSPLog.print("Make new atmo curve " + newISP);
             //float frameMultiplier = newISP / BaseAtmosphereCurve.Evaluate(0);
             FloatCurve newAtmosphereCurve = new FloatCurve();
             AnimationCurve innerCurve = newAtmosphereCurve.Curve;
             foreach (Keyframe frame in BaseAtmosphereCurve.Curve.keys)
             {
                 Keyframe newframe = new Keyframe(frame.time, frame.value + LfOIspDifference);
-                KSPLog.print("New frame: " + newframe.time + " " + newframe.value);
+                //KSPLog.print("New frame: " + newframe.time + " " + newframe.value);
                 innerCurve.AddKey(newframe);
             }
-            KSPLog.print("Set new atmo curve");
+            //KSPLog.print("Set new atmo curve");
             atmosphereCurve = newAtmosphereCurve;
-            KSPLog.print("ISP at 0 atm: " + atmosphereCurve.Evaluate(0));
-            KSPLog.print("ISP at 1 atm: " + atmosphereCurve.Evaluate(1));
+            //KSPLog.print("ISP at 0 atm: " + atmosphereCurve.Evaluate(0));
+            //KSPLog.print("ISP at 1 atm: " + atmosphereCurve.Evaluate(1));
         }
     }
 }

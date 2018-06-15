@@ -76,7 +76,6 @@ namespace ExoticSolutions
             if (vessel)
             {
                 base.OnInitialize();
-                //part.GetPartColliders().AddUnique(shieldCollider);
                 foreach (Part part in vessel.parts)
                 {
                     if (part != this.part)
@@ -216,7 +215,6 @@ namespace ExoticSolutions
                 if (shieldCollided)
                 {
                     double energyRequired = collision.impulse.magnitude * 2;
-                    KSPLog.print(energyRequired);
 
                     double SPReceived = part.RequestResource(Constants.SPDefinition.id, energyRequired);
                     if ((energyRequired - SPReceived) > 1d)
@@ -247,13 +245,11 @@ namespace ExoticSolutions
                     {
                         double SPReceived = part.RequestResource(Constants.SPDefinition.id, (part.skinTemperature - shieldHeatThreshhold) * shieldHeatCost);
                         part.skinTemperature -= SPReceived / shieldHeatCost;
-                        KSPLog.print("Shield soaked " + SPReceived / shieldHeatCost + " heat.");
                     }
                     if (part.temperature > shieldHeatThreshhold)
                     {
                         double SPReceived = part.RequestResource(Constants.SPDefinition.id, (part.temperature - shieldHeatThreshhold) * shieldHeatCost);
                         part.temperature -= SPReceived / shieldHeatCost;
-                        KSPLog.print("Shield soaked " + SPReceived / shieldHeatCost + " heat.");
                     }
                     part.crashTolerance = (float)shieldPower.amount / 30;
                 }
